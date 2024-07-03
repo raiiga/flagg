@@ -8,12 +8,12 @@ import (
 
 const emptyString, flagKeyFormat = "", "%s:%s"
 
-type Handler struct {
+type handler struct {
 	FlagMap map[string]bool
 	FlagSet *flag.FlagSet
 }
 
-func (h *Handler) Func(fullKey, shortKey string, f func(s string) error) {
+func (h *handler) Func(fullKey, shortKey string, f func(s string) error) {
 	executor := h.checkedExecutor(fullKey, shortKey, f)
 
 	if fullKey != emptyString {
@@ -25,7 +25,7 @@ func (h *Handler) Func(fullKey, shortKey string, f func(s string) error) {
 	}
 }
 
-func (h *Handler) BoolFunc(fullKey, shortKey string, f func(s string) error) {
+func (h *handler) BoolFunc(fullKey, shortKey string, f func(s string) error) {
 	executor := h.checkedExecutor(fullKey, shortKey, f)
 
 	if fullKey != emptyString {
@@ -37,7 +37,7 @@ func (h *Handler) BoolFunc(fullKey, shortKey string, f func(s string) error) {
 	}
 }
 
-func (h *Handler) checkedExecutor(fullKey, shortKey string, f func(s string) error) func(s string) error {
+func (h *handler) checkedExecutor(fullKey, shortKey string, f func(s string) error) func(s string) error {
 	key := fmt.Sprintf(flagKeyFormat, fullKey, shortKey)
 
 	return func(s string) error {

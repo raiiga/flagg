@@ -8,7 +8,7 @@ import (
 	"unsafe"
 )
 
-type Mapper struct {
+type mapper struct {
 	FlagSet *flag.FlagSet
 }
 
@@ -19,7 +19,7 @@ const (
 	UsageTagName = "usage"
 )
 
-func (m *Mapper) ReadValue(entity any) {
+func (m *mapper) ReadValue(entity any) {
 	typeOf, valueOf := reflect.TypeOf(entity).Elem(), reflect.ValueOf(entity).Elem()
 
 	for i, l := 0, typeOf.NumField(); i < l; i++ {
@@ -38,12 +38,13 @@ func (m *Mapper) ReadValue(entity any) {
 	}
 }
 
-func (m *Mapper) processFlag(name, usage, value string, fieldVal reflect.Value) {
+func (m *mapper) processFlag(name, usage, value string, fieldVal reflect.Value) {
 	ptr, typ := unsafe.Pointer(fieldVal.UnsafeAddr()), fieldVal.Type()
 
 	if t := reflect.TypeFor[bool](); typ.AssignableTo(t) {
 		parsed, _ := strconv.ParseBool(value)
 		m.FlagSet.BoolVar((*bool)(ptr), name, parsed, usage)
+		return
 	}
 
 	if t := reflect.TypeFor[string](); typ.AssignableTo(t) {
