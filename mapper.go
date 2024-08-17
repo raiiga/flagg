@@ -2,6 +2,7 @@ package flagg
 
 import (
 	"flag"
+	"os"
 	"reflect"
 	"strconv"
 	"time"
@@ -12,30 +13,33 @@ type mapper struct {
 	FlagSet *flag.FlagSet
 }
 
-const (
-	NameTagName  = "name"
-	ShortTagName = "short"
-	ValueTagName = "value"
-	UsageTagName = "usage"
-)
+func NewMapper(name string, handling flag.ErrorHandling) *mapper {
+	return &mapper{FlagSet: flag.NewFlagSet(name, handling)}
+}
 
-func (m *mapper) ReadValue(entity any) {
+func (m *mapper) Map(entity any) error {
+	return m.MapFromArgs(entity, os.Args[1:])
+}
+
+func (m *mapper) MapFromArgs(entity any, args []string) error {
 	typeOf, valueOf := reflect.TypeOf(entity).Elem(), reflect.ValueOf(entity).Elem()
 
 	for i, l := 0, typeOf.NumField(); i < l; i++ {
 		fieldTyp, fieldVal := typeOf.Field(i), valueOf.Field(i)
 
-		usage, _ := fieldTyp.Tag.Lookup(UsageTagName)
-		value, _ := fieldTyp.Tag.Lookup(ValueTagName)
+		usage, _ := fieldTyp.Tag.Lookup(usageTagName)
+		value, _ := fieldTyp.Tag.Lookup(valueTagName)
 
-		if full, f := fieldTyp.Tag.Lookup(NameTagName); f {
+		if full, f := fieldTyp.Tag.Lookup(longTagName); f {
 			m.processFlag(full, usage, value, fieldVal)
 		}
 
-		if short, s := fieldTyp.Tag.Lookup(ShortTagName); s {
+		if short, s := fieldTyp.Tag.Lookup(shortTagName); s {
 			m.processFlag(short, usage, value, fieldVal)
 		}
 	}
+
+	return m.FlagSet.Parse(args)
 }
 
 func (m *mapper) processFlag(name, usage, value string, fieldVal reflect.Value) {
@@ -85,6 +89,16 @@ func (m *mapper) processFlag(name, usage, value string, fieldVal reflect.Value) 
 	if t := reflect.TypeFor[time.Duration](); typ.AssignableTo(t) {
 		parsed, _ := time.ParseDuration(value)
 		m.FlagSet.DurationVar((*time.Duration)(ptr), name, parsed, usage)
+		return
+	}
+
+	if t := reflect.TypeFor[func(string) error](); typ.AssignableTo(t) {
+		m.FlagSet.Func(name, usage, *(*func(string) error)(ptr))
+		return
+	}
+
+	if t := reflect.TypeFor[func() error](); typ.AssignableTo(t) {
+		m.FlagSet.BoolFunc(name, usage, func(string) error { return (*(*func() error)(ptr))() })
 		return
 	}
 }
