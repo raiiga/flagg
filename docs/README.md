@@ -11,30 +11,28 @@ Mapping flags to defined structure:
 package main
 
 import (
-    "github.com/raiiga/flagg"
-    "log"
+	"fmt"
+	"github.com/raiiga/flagg"
 )
 
 type options struct {
-    input   string `short:"i" long:"input" usage:"Input file path"`
-    output  string `short:"o" long:"output" usage:"Output file path"`
-    help    bool   `short:"h" long:"help" usage:"Show this message and exit"`
-    version bool   `short:"v" long:"version" usage:"Show app version and exit"`
-    verbose bool   `long:"verbose" usage:"Verbose output"`
+	input   string `flagg:"n:i, name:input, usage:Input file path"`
+	output  string `flagg:"n:o, name:output, usage:Output file path"`
+	version bool   `flagg:"n:v, name:version, usage:Print version"`
+	verbose bool   `flagg:"n:V, name:verbose, usage:Verbose output mode"`
 }
 
 func main() {
-    mapper, opts := flagg.NewMapper("yourProjectName", flagg.ContinueOnError), options{}
-    
-    if err := mapper.Map(&opts); err != nil {
-       log.Fatal(err)
-    }
-    
-    if opts.help {
-       mapper.FlagSet.Usage()
-    } else {
-       /* your further logic */
-    }
+	opts, flags := new(options), flagg.New("yourProjectName")
+
+	if help, err := flags.Map(opts); err != nil {
+		fmt.Println(err)
+		return
+	} else if help {
+		return
+	}
+
+	fmt.Println(opts)
 }
 ```
 
@@ -44,25 +42,33 @@ Handling flags with defined functions:
 package main
 
 import (
-    "github.com/raiiga/flagg"
-    "log"
+	"fmt"
+	"github.com/raiiga/flagg"
 )
 
-func main() {
-    handler := flagg.NewHandler("yourProjectName", flagg.ContinueOnError)
-    
-    handler.Func("input", "i", "Input file path", func(input string) error {
-       /* your further logic */
-       return nil
-    })
-    
-    handler.Func("output", "o", "Output file path", func(input string) error {
-       /* your further logic */
-       return nil
-    })
+type options struct {
+	boolHandler  func() error             `flagg:"n:b, name:bool, usage:function activated if flag provided"`
+	plainHandler func(input string) error `flagg:"n:f, name:func, usage:function activated if flag with value provided"`
+}
 
-    if err := handler.Handle(); err != nil {
-        log.Fatal(err)
-    }
+func main() {
+	opts, flags := new(options), flagg.New("yourProjectName")
+
+	opts.boolHandler = func() error {
+		_, err := fmt.Println("Your boolean function output")
+		return err
+	}
+
+	opts.plainHandler = func(input string) error {
+		_, err := fmt.Printf("Your input is: %s%s", input, fmt.Sprintln())
+		return err
+	}
+
+	if help, err := flags.Map(opts); err != nil {
+		fmt.Println(err)
+		return
+	} else if help {
+		return
+	}
 }
 ```
