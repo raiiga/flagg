@@ -40,6 +40,10 @@ func (m *flagg) MapFromArgs(entity any, args []string) (bool, error) {
 		}
 	}
 
+	if fileInfo, _ := os.Stdin.Stat(); fileInfo.Mode()&os.ModeCharDevice == 0 {
+		return m.Parser.ParseWithPipe(args, os.Stdin)
+	}
+
 	return m.Parser.Parse(args)
 }
 

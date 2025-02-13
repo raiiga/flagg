@@ -1,9 +1,11 @@
 package flagg
 
 import (
+	"bufio"
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"reflect"
 	"strconv"
 	"strings"
@@ -146,7 +148,7 @@ func (p *parser) populateUsage(typ reflect.Type, flagN, flagName, flagUsage stri
 
 func (p *parser) Parse(args []string) (bool, error) {
 	p.FlagSet.Usage = func() {
-		println(p.Usage.String())
+		fmt.Println(p.Usage.String())
 	}
 
 	if err := p.FlagSet.Parse(args); errors.Is(err, flag.ErrHelp) {
@@ -156,4 +158,14 @@ func (p *parser) Parse(args []string) (bool, error) {
 	}
 
 	return false, nil
+}
+
+func (p *parser) ParseWithPipe(args []string, r io.Reader) (bool, error) {
+	builder := new(strings.Builder)
+
+	for scanner := bufio.NewScanner(r); scanner.Scan(); {
+		builder.WriteString(scanner.Text())
+	}
+
+	return p.Parse(append(args, builder.String()))
 }
