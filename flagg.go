@@ -18,8 +18,9 @@ func New(name string) *flagg {
 
 	return &flagg{
 		Parser: &parser{
-			Usage:   sb,
-			FlagSet: flag.NewFlagSet(name, flag.ContinueOnError),
+			Usage:       sb,
+			FlagSet:     flag.NewFlagSet(name, flag.ContinueOnError),
+			FuncFlagSet: flag.NewFlagSet(name, flag.ContinueOnError),
 		},
 	}
 }

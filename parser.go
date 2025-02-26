@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -27,8 +28,9 @@ var (
 )
 
 type parser struct {
-	FlagSet *flag.FlagSet
-	Usage   *strings.Builder
+	Usage       *strings.Builder
+	FlagSet     *flag.FlagSet
+	FuncFlagSet *flag.FlagSet
 }
 
 func (p *parser) FromMap(fieldValue reflect.Value, parameterMap map[string]string) {
@@ -109,13 +111,13 @@ func (p *parser) populateFlag_(pointer unsafe.Pointer, flagType reflect.Type, fl
 
 	if t := reflect.TypeFor[func() error](); flagType.AssignableTo(t) {
 		once := sync.OnceValue(*(*func() error)(pointer))
-		p.FlagSet.BoolFunc(flagName, "", func(string) error { return once() })
+		p.FuncFlagSet.BoolFunc(flagName, "", func(string) error { return once() })
 		return
 	}
 
 	if t := reflect.TypeFor[func(string) error](); flagType.AssignableTo(t) {
 		mutex := new(sync.Mutex)
-		p.FlagSet.Func(flagName, "", func(s string) error {
+		p.FuncFlagSet.Func(flagName, "", func(s string) error {
 			if !mutex.TryLock() {
 				return nil
 			}
@@ -151,7 +153,17 @@ func (p *parser) Parse(args []string) (bool, error) {
 		fmt.Println(p.Usage.String())
 	}
 
+	funcArgs := p.separateFuncArgs(args)
+
 	if err := p.FlagSet.Parse(args); errors.Is(err, flag.ErrHelp) {
+		return true, nil
+	} else if err != nil {
+		return false, err
+	}
+
+	p.FuncFlagSet.Usage = p.FlagSet.Usage
+
+	if err := p.FuncFlagSet.Parse(funcArgs); errors.Is(err, flag.ErrHelp) {
 		return true, nil
 	} else if err != nil {
 		return false, err
@@ -168,4 +180,20 @@ func (p *parser) ParseWithPipe(args []string, r io.Reader) (bool, error) {
 	}
 
 	return p.Parse(append(args, builder.String()))
+}
+
+func (p *parser) separateFuncArgs(args []string) []string {
+	var funcArgs []string
+
+	args = slices.DeleteFunc(args, func(s string) bool {
+		if p.FuncFlagSet.Lookup(strings.TrimLeftFunc(s, func(r rune) bool {
+			return r == '-'
+		})) != nil {
+			funcArgs = append(funcArgs, s)
+			return true
+		}
+		return false
+	})
+
+	return funcArgs
 }
