@@ -183,15 +183,33 @@ func (p *parser) ParseWithPipe(args []string, r io.Reader) (bool, error) {
 }
 
 func (p *parser) separateFuncArgs(args []string) []string {
-	var funcArgs []string
+	var (
+		flagArg  bool
+		funcArgs []string
+	)
 
-	args = slices.DeleteFunc(args, func(s string) bool {
-		if p.FuncFlagSet.Lookup(strings.TrimLeftFunc(s, func(r rune) bool {
+	slices.DeleteFunc(args, func(s string) bool {
+		arg := strings.TrimLeftFunc(s, func(r rune) bool {
 			return r == '-'
-		})) != nil {
+		})
+
+		if p.FlagSet.Lookup(arg) != nil {
+			flagArg = false
+			return false
+		}
+
+		if p.FuncFlagSet.Lookup(arg) != nil {
 			funcArgs = append(funcArgs, s)
+			flagArg = true
 			return true
 		}
+
+		if flagArg {
+			funcArgs = append(funcArgs, s)
+			flagArg = false
+			return true
+		}
+
 		return false
 	})
 
