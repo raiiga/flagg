@@ -29,7 +29,6 @@ var (
 
 type parser struct {
 	Usage       *strings.Builder
-	FlagMap     map[string]string
 	FlagSet     *flag.FlagSet
 	FuncFlagSet *flag.FlagSet
 }
@@ -135,17 +134,6 @@ func (p *parser) populateUsage(typ reflect.Type, flagN, flagName, flagUsage stri
 		type_ = "string"
 	}
 
-	p.FlagMap = map[string]string{}
-
-	if flagN != "" && flagName != "" {
-		p.FlagMap[flagN] = fmt.Sprintf("%s:%s", flagN, flagName)
-		p.FlagMap[flagName] = fmt.Sprintf("%s:%s", flagN, flagName)
-	} else if flagN != "" {
-		p.FlagMap[flagN] = flagN
-	} else if flagName != "" {
-		p.FlagMap[flagName] = flagName
-	}
-
 	switch mask {
 	case 1:
 		p.Usage.WriteString(fmt.Sprintf("%s-%s %s", lineSeparator, flagN, type_))
@@ -196,9 +184,8 @@ func (p *parser) ParseWithPipe(args []string, r io.Reader) (bool, error) {
 
 func (p *parser) separateFuncArgs(args []string) []string {
 	var (
-		lastFlag  string
-		funcSlice []string
-		funcMap   = map[string][]string{}
+		flagArg  bool
+		funcArgs []string
 	)
 
 	slices.DeleteFunc(args, func(s string) bool {
@@ -207,28 +194,24 @@ func (p *parser) separateFuncArgs(args []string) []string {
 		})
 
 		if p.FlagSet.Lookup(arg) != nil {
-			lastFlag = ""
+			flagArg = false
 			return false
 		}
 
 		if p.FuncFlagSet.Lookup(arg) != nil {
-			funcMap[p.FlagMap[arg]] = []string{s}
-			lastFlag = arg
+			funcArgs = append(funcArgs, s)
+			flagArg = true
 			return true
 		}
 
-		if lastFlag != "" {
-			funcMap[p.FlagMap[lastFlag]] = append(funcMap[p.FlagMap[lastFlag]], s)
-			lastFlag = ""
+		if flagArg {
+			funcArgs = append(funcArgs, s)
+			flagArg = false
 			return true
 		}
 
 		return false
 	})
 
-	for _, v := range funcMap {
-		funcSlice = append(funcSlice, v...)
-	}
-
-	return funcSlice
+	return funcArgs
 }
