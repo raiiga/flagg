@@ -37,7 +37,7 @@ func main() {
 ```
 ## Output:
 ```shell
-  $ go build -o example ./main.go
+$ go build -o example ./main.go
 
 $ ./example -h
 Usage: app [options]
