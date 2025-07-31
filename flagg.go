@@ -1,43 +1,48 @@
 package flagg
 
 import (
-	"flag"
-	"fmt"
+	"github.com/raiiga/flagg/internal"
 	"os"
 	"reflect"
 	"strings"
 )
 
+const (
+	tag   = "flagg"
+	colon = ":"
+	comma = ","
+)
+
 type flagg struct {
-	Parser *parser
+	Parser *internal.Parser
 }
 
-func New(name string) *flagg {
-	var sb = new(strings.Builder)
-	sb.WriteString(fmt.Sprintf("Usage of %s:", name))
+func New(usage string) *flagg {
+	sb := new(strings.Builder)
+	sb.WriteString(usage)
 
 	return &flagg{
-		Parser: &parser{
+		Parser: &internal.Parser{
 			Usage:       sb,
-			FlagSet:     flag.NewFlagSet(name, flag.ContinueOnError),
-			FuncFlagSet: flag.NewFlagSet(name, flag.ContinueOnError),
+			Pointers:    make([]*internal.FlagPointer, 0),
+			PointersMap: make(map[string]*internal.FlagPointer),
 		},
 	}
 }
 
-func (m *flagg) Map(entity any) (bool, error) {
+func (m *flagg) Map(entity any) error {
 	return m.MapFromArgs(entity, os.Args[1:])
 }
 
-func (m *flagg) MapFromArgs(entity any, args []string) (bool, error) {
-	var (
-		typeOf  = reflect.TypeOf(entity).Elem()
-		valueOf = reflect.ValueOf(entity).Elem()
-	)
+func (m *flagg) MapFromArgs(entity any, args []string) error {
+	typeOf := reflect.TypeOf(entity).Elem()
+	valueOf := reflect.ValueOf(entity).Elem()
 
 	for i, l := 0, typeOf.NumField(); i < l; i++ {
-		if lookup, ok := typeOf.Field(i).Tag.Lookup("flagg"); ok {
-			m.process(lookup, valueOf.Field(i))
+		if lookup, ok := typeOf.Field(i).Tag.Lookup(tag); ok {
+			if err := m.process(lookup, valueOf.Field(i)); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -48,17 +53,15 @@ func (m *flagg) MapFromArgs(entity any, args []string) (bool, error) {
 	return m.Parser.Parse(args)
 }
 
-func (m *flagg) process(lookup string, fieldValue reflect.Value) {
-	var (
-		params = map[string]string{}
-		split  = strings.Split(lookup, ",")
-	)
+func (m *flagg) process(lookup string, fieldValue reflect.Value) error {
+	params := map[string]string{}
+	split := strings.Split(lookup, comma)
 
 	for _, s := range split {
-		if i := strings.Split(strings.TrimSpace(s), ":"); len(i) == 2 {
+		if i := strings.Split(strings.TrimSpace(s), colon); len(i) == 2 {
 			params[strings.TrimSpace(i[0])] = strings.TrimSpace(i[1])
 		}
 	}
 
-	m.Parser.FromMap(fieldValue, params)
+	return m.Parser.FromMap(fieldValue, params)
 }
