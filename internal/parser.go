@@ -66,7 +66,7 @@ func (p *Parser) ParseWithPipe(args []string, r io.Reader) error {
 	builder := new(strings.Builder)
 
 	for scanner := bufio.NewScanner(r); scanner.Scan(); {
-		builder.WriteString(scanner.Text())
+		builder.WriteString(fmt.Sprintln(scanner.Text()))
 	}
 
 	return p.Parse(append(args, builder.String()))
