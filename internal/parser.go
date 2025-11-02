@@ -65,8 +65,13 @@ func (p *Parser) FromMap(fieldValue reflect.Value, parameterMap map[string]strin
 func (p *Parser) ParseWithPipe(args []string, r io.Reader) error {
 	builder := new(strings.Builder)
 
-	for scanner := bufio.NewScanner(r); scanner.Scan(); {
-		builder.WriteString(fmt.Sprintln(scanner.Text()))
+	for c, s := 0, bufio.NewScanner(r); s.Scan(); c++ {
+
+		if c > 0 {
+			builder.WriteString(fmt.Sprintln())
+		}
+
+		builder.WriteString(s.Text())
 	}
 
 	return p.Parse(append(args, builder.String()))
@@ -74,6 +79,10 @@ func (p *Parser) ParseWithPipe(args []string, r io.Reader) error {
 
 func (p *Parser) Parse(args []string) error {
 	var current *FlagPointer
+
+	if len(p.Pointers) == 0 {
+		return errors.New("No tags for flagg provided")
+	}
 
 	req := p.buildUsage()
 

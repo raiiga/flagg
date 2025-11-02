@@ -1,16 +1,20 @@
 package flagg
 
 import (
-	"github.com/raiiga/flagg/internal"
 	"os"
 	"reflect"
+	"regexp"
 	"strings"
+
+	"github.com/raiiga/flagg/internal"
 )
 
 const (
-	tag   = "flagg"
-	colon = ":"
-	comma = ","
+	tag    = "flagg"
+	colon  = ":"
+	empty  = ""
+	cutset = ", "
+	escape = "\\"
 )
 
 type flagg struct {
@@ -46,7 +50,7 @@ func (m *flagg) MapFromArgs(entity any, args []string) error {
 		}
 	}
 
-	if fileInfo, _ := os.Stdin.Stat(); fileInfo.Mode()&os.ModeCharDevice == 0 {
+	if fileInfo, _ := os.Stdin.Stat(); fileInfo.Mode()&os.ModeNamedPipe != 0 {
 		return m.Parser.ParseWithPipe(args, os.Stdin)
 	}
 
@@ -55,11 +59,13 @@ func (m *flagg) MapFromArgs(entity any, args []string) error {
 
 func (m *flagg) process(lookup string, fieldValue reflect.Value) error {
 	params := map[string]string{}
-	split := strings.Split(lookup, comma)
+	split := regexp.MustCompile(`.*?[^\\](,|$)`).FindAllString(lookup, -1)
 
 	for _, s := range split {
-		if i := strings.Split(strings.TrimSpace(s), colon); len(i) == 2 {
-			params[strings.TrimSpace(i[0])] = strings.TrimSpace(i[1])
+		kv := strings.Trim(s, cutset)
+
+		if i := strings.SplitN(kv, colon, 2); len(i) == 2 {
+			params[strings.TrimSpace(i[0])] = strings.ReplaceAll(strings.TrimSpace(i[1]), escape, empty)
 		}
 	}
 
